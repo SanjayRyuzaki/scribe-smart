@@ -17,74 +17,80 @@ const con = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME
 });
-
+  
 con.connect(function(err) {
-  if (err) throw err;
-  console.log("Connected!");
+    if (err) throw err;
+    console.log("Connected!");
+    // con.query("CREATE DATABASE mydb", function (err, result) {
+    //   if (err) throw err;
+    //   console.log("Database created");
+    // });
+    // var sql = "CREATE TABLE users (name VARCHAR(255), password VARCHAR(255))";
+    // con.query(sql, function (err, result) {
+    //   if (err) throw err;
+    //   console.log("Table created");
+    // });
 });
+  
 
+// Define the directory where your static files (like HTML, CSS, images) reside
 const publicDirectoryPath = path.join(__dirname, 'public');
+
+// Serve static files from the 'public' directory
 app.use(express.static(publicDirectoryPath));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-// Serve login page at root
+// Define your endpoint to serve the HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(publicDirectoryPath, 'login.html'));
 });
 
-// Register new user
-app.post('/signup', (req, res) => {
-  const { username, password1, password2 } = req.body;
-  console.log(`username: ${username}, password1: ${password1}, password2: ${password2}`);
+app.post('/signup',(req,res)=>{
+    const {username,password1,password2} = req.body;
+    console.log(username: ${username}, password1: ${password1}, password2: ${password2});
 
-  if (password1 !== password2) {
-    res.status(401).json({ message: 'Passwords do not match' });
-  } else {
-    const sql = `INSERT INTO users (name, password) VALUES ('${username}', '${password1}')`;
+    if(password1 != password2){
+      res.status(401).json({ message: 'Passwords do not match' });
+    }
+    else{
+      var sql = INSERT INTO users (name, password) VALUES ('${username}', '${password1}');
+      con.query(sql, function (err, result) {
+        if (err) throw err;
+        console.log("User added");
+      });
+      res.sendFile(path.join(publicDirectoryPath, 'login.html'));
+    }
+
+});
+
+app.post('/auth',(req,res)=>{
+    const {username,password} = req.body;
+    console.log(username: ${username}, password: ${password});
+
+    var sql = SELECT * FROM users WHERE name = '${username}' AND password = '${password}';
     con.query(sql, function (err, result) {
       if (err) throw err;
-      console.log("User added");
-    });
-    res.sendFile(path.join(publicDirectoryPath, 'login.html'));
-  }
-});
-
-// Authenticate user
-app.post('/auth', (req, res) => {
-  const { username, password } = req.body;
-  console.log(`username: ${username}, password: ${password}`);
-
-  const sql = `SELECT * FROM users WHERE name = '${username}' AND password = '${password}'`;
-  con.query(sql, function (err, result) {
-    if (err) throw err;
-    console.log(result);
-    if (result.length > 0) {
-      res.cookie('username', username, { maxAge: 900000, httpOnly: false });
-      res.redirect('/upload');
-    } else {
-      res.status(401).json({ message: 'Invalid credentials' });
-    }
-  });
-});
-
-// Serve upload.html only if logged in
-app.get('/upload', (req, res) => {
-  if (!req.cookies.username) {
-    return res.redirect('/');
-  }
-  res.sendFile(path.join(publicDirectoryPath, 'upload.html'));
-});
-
-// Serve main.html only if logged in
-app.get('/main', (req, res) => {
-  if (!req.cookies.username) {
-    return res.redirect('/');
-  }
-  res.sendFile(path.join(publicDirectoryPath, 'main.html'));
+      console.log(result);
+      if(result.length > 0){
+        res.cookie('username', username, { maxAge: 900000, httpOnly: false });
+        res.sendFile(path.join(publicDirectoryPath, 'upload.html'));
+      }else{
+        res.status(401).json({ message: 'Invalid credentials' });
+      }
+  })
 });
 
 // Start the server
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server is up on port ${port}`);
+app.listen(port, '0.0.0.0',() => {
+  console.log(Server is up on port ${port});
 });
+
+
+// auto edit 04:29:26
+// auto edit 04:29:26
+// auto edit 04:29:26
+// auto edit 04:29:26
+// auto edit 04:29:26
+// auto edit 04:29:27
+// auto edit 04:29:27
