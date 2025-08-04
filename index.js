@@ -48,13 +48,13 @@ app.get('/', (req, res) => {
 
 app.post('/signup',(req,res)=>{
     const {username,password1,password2} = req.body;
-    console.log(username: ${username}, password1: ${password1}, password2: ${password2});
+    console.log(`username: ${username}, password1: ${password1}, password2: ${password2}`);
 
     if(password1 != password2){
       res.status(401).json({ message: 'Passwords do not match' });
     }
     else{
-      var sql = INSERT INTO users (name, password) VALUES ('${username}', '${password1}');
+      var sql = `INSERT INTO users (name, password) VALUES ('${username}', '${password1}')`;
       con.query(sql, function (err, result) {
         if (err) throw err;
         console.log("User added");
@@ -66,9 +66,9 @@ app.post('/signup',(req,res)=>{
 
 app.post('/auth',(req,res)=>{
     const {username,password} = req.body;
-    console.log(username: ${username}, password: ${password});
+    console.log(`username: ${username}, password: ${password}`);
 
-    var sql = SELECT * FROM users WHERE name = '${username}' AND password = '${password}';
+    var sql = `SELECT * FROM users WHERE name = '${username}' AND password = '${password}'`;
     con.query(sql, function (err, result) {
       if (err) throw err;
       console.log(result);
@@ -83,14 +83,6 @@ app.post('/auth',(req,res)=>{
 
 // Start the server
 app.listen(port, '0.0.0.0',() => {
-  console.log(Server is up on port ${port});
+  console.log(`Server is up on port ${port}`);
 });
 
-
-// auto edit 04:29:26
-// auto edit 04:29:26
-// auto edit 04:29:26
-// auto edit 04:29:26
-// auto edit 04:29:26
-// auto edit 04:29:27
-// auto edit 04:29:27
