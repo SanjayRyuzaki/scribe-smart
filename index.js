@@ -37,7 +37,7 @@ con.connect(function(err) {
 const publicDirectoryPath = path.join(__dirname, 'public');
 
 // Serve static files from the 'public' directory
-app.use(express.static(publicDirectoryPath));
+app.use(express.static(publicDirectoryPath, { index: false }));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
