@@ -42,6 +42,11 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // Define your endpoint to serve the HTML file
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicDirectoryPath, 'login.html'));
+});
+
+// Explicit routes for clarity
 app.get('/login', (req, res) => {
   res.sendFile(path.join(publicDirectoryPath, 'login.html'));
 });
