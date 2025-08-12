@@ -42,8 +42,12 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // Define your endpoint to serve the HTML file
-app.get('/', (req, res) => {
+app.get('/login', (req, res) => {
   res.sendFile(path.join(publicDirectoryPath, 'login.html'));
+});
+
+app.get('/home', (req, res) => {
+  res.sendFile(path.join(publicDirectoryPath, 'index.html'));
 });
 
 app.post('/signup',(req,res)=>{
