@@ -6,6 +6,8 @@
   <title>Scribe Smart - Login/Register</title>
   <script src="https://kit.fontawesome.com/64d58efce2.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/lottie-web@5.10.1/build/player/lottie.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -25,7 +27,7 @@
     }
 
     /* 🌀 Lottie background container */
-    #lottie-background {
+    #lottie-bg {
       position: fixed;
       top: 0;
       left: 0;
@@ -137,7 +139,7 @@
 <body>
 
   <!-- 🌌 Lottie animation background -->
-  <div id="lottie-background"></div>
+  <div id="lottie-bg"></div>
 
   <!-- Login Form -->
   <form class="card container" action="/auth" method="POST">
@@ -191,13 +193,20 @@
     });
 
     // 🔥 Load Lottie background animation
-    lottie.loadAnimation({
-      container: document.getElementById('lottie-background'),
-      renderer: 'svg',
-      loop: true,
-      autoplay: true,
-      path: '/animations/bg-loop.json'
-    });
+    (function startLottie(){
+      const container = document.getElementById('lottie-bg');
+      if (!container) { console.error('Lottie container not found'); return; }
+
+      const anim = lottie.loadAnimation({
+        container,
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: '/login-bg.json' // MUST exist at public/login-bg.json
+      });
+      anim.addEventListener('DOMLoaded', () => console.log('Lottie loaded'));
+      anim.addEventListener('data_failed', () => console.error('Lottie: failed to load JSON (check path)'));
+    })();
   </script>
 </body>
 </html>
