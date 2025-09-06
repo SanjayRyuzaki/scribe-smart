@@ -1,4 +1,4 @@
-// index.js (Neon/Postgres + routed login → upload → main)
+
 // -------------------------------------------------------
 require('dotenv').config();
 
@@ -12,7 +12,7 @@ const bcrypt = require('bcrypt');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* -------------------- DB: Neon Postgres -------------------- */
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   // Neon requires SSL; this works locally and on Render:
