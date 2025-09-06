@@ -10,9 +10,12 @@
   "author": "k0m1_sahith2k3",
   "license": "ISC",
   "dependencies": {
-    "cookie-parser": "^1.4.6",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "mysql": "^2.18.1"
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "mysql": "^2.18.1",
+    "pg": "^8.16.3"
   }
 }
