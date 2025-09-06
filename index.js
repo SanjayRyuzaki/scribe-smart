@@ -1,97 +1,145 @@
+// index.js (Neon/Postgres + routed login → upload → main)
+// -------------------------------------------------------
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-require('dotenv').config();
-const mysql = require('mysql');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
+/* -------------------- DB: Neon Postgres -------------------- */
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Neon requires SSL; this works locally and on Render:
+  ssl: { rejectUnauthorized: false },
+});
+
+async function ensureSchema() {
+  const sql = `
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
+  await pool.query(sql);
+}
+
+/* -------------------- Middleware -------------------- */
 app.use(cookieParser());
-
-const con = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
-});
-  
-con.connect(function(err) {
-    if (err) throw err;
-    console.log("Connected!");
-    // con.query("CREATE DATABASE mydb", function (err, result) {
-    //   if (err) throw err;
-    //   console.log("Database created");
-    // });
-    // var sql = "CREATE TABLE users (name VARCHAR(255), password VARCHAR(255))";
-    // con.query(sql, function (err, result) {
-    //   if (err) throw err;
-    //   console.log("Table created");
-    // });
-});
-  
-
-// Define the directory where your static files (like HTML, CSS, images) reside
-const publicDirectoryPath = path.join(__dirname, 'public');
-
-// Serve static files from the 'public' directory
-app.use(express.static(publicDirectoryPath, { index: false }));
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Define your endpoint to serve the HTML file
+// Serve static files from /public BUT do NOT auto-serve index.html at "/"
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
+// Tiny auth guard (checks cookie exists). Your /auth sets this cookie.
+function requireAuth(req, res, next) {
+  const username = req.cookies?.username;
+  if (!username) return res.redirect('/login');
+  next();
+}
+
+/* -------------------- Pages (GET) -------------------- */
+// Always show login page at "/" and "/login"
 app.get('/', (req, res) => {
-  res.sendFile(path.join(publicDirectoryPath, 'login.html'));
+  return res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Explicit routes for clarity
 app.get('/login', (req, res) => {
-  res.sendFile(path.join(publicDirectoryPath, 'login.html'));
+  return res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.get('/home', (req, res) => {
-  res.sendFile(path.join(publicDirectoryPath, 'index.html'));
+// After login, user lands on /upload (requires auth)
+app.get('/upload', requireAuth, (req, res) => {
+  return res.sendFile(path.join(__dirname, 'public', 'upload.html'));
 });
 
-app.post('/signup',(req,res)=>{
-    const {username,password1,password2} = req.body;
-    console.log(`username: ${username}, password1: ${password1}, password2: ${password2}`);
+// Main editor page (requires auth)
+app.get('/home', requireAuth, (req, res) => {
+  return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-    if(password1 != password2){
-      res.status(401).json({ message: 'Passwords do not match' });
+// Optional: block direct hits to index.html without login
+app.get('/index.html', requireAuth, (req, res) => {
+  return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+/* -------------------- Auth (POST) -------------------- */
+// Register
+app.post('/signup', async (req, res) => {
+  try {
+    const { username, password1, password2 } = req.body;
+    if (!username || !password1 || !password2) {
+      return res.status(400).send('Missing fields');
     }
-    else{
-      var sql = `INSERT INTO users (name, password) VALUES ('${username}', '${password1}')`;
-      con.query(sql, function (err, result) {
-        if (err) throw err;
-        console.log("User added");
-      });
-      res.sendFile(path.join(publicDirectoryPath, 'login.html'));
+    if (password1 !== password2) {
+      return res.status(401).send('Passwords do not match');
     }
 
+    const hash = await bcrypt.hash(password1, 10);
+
+    await pool.query(
+      'INSERT INTO users (name, password_hash) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING',
+      [username, hash]
+    );
+
+    // After signup, show login page
+    return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send('Signup error');
+  }
 });
 
-app.post('/auth',(req,res)=>{
-    const {username,password} = req.body;
-    console.log(`username: ${username}, password: ${password}`);
+// Login
+app.post('/auth', async (req, res) => {
+  try {
+    const { username, password } = req.body;
 
-    var sql = `SELECT * FROM users WHERE name = '${username}' AND password = '${password}'`;
-    con.query(sql, function (err, result) {
-      if (err) throw err;
-      console.log(result);
-      if(result.length > 0){
-        res.cookie('username', username, { maxAge: 900000, httpOnly: false });
-        res.sendFile(path.join(publicDirectoryPath, 'upload.html'));
-      }else{
-        res.status(401).json({ message: 'Invalid credentials' });
-      }
-  })
+    const { rows } = await pool.query(
+      'SELECT id, name, password_hash FROM users WHERE name = $1',
+      [username]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).send('Invalid credentials');
+    }
+
+    const ok = await bcrypt.compare(password, rows[0].password_hash);
+    if (!ok) {
+      return res.status(401).send('Invalid credentials');
+    }
+
+    // Set a lightweight cookie. (Consider secure:true on HTTPS.)
+    res.cookie('username', rows[0].name, {
+      httpOnly: true,
+      sameSite: 'lax',
+      // secure: true, // enable when serving over HTTPS
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // Redirect to the upload page after successful login
+    return res.redirect('/upload');
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send('Login error');
+  }
 });
 
-// Start the server
-app.listen(port, '0.0.0.0',() => {
-  console.log(`Server is up on port ${port}`);
+/* -------------------- Boot -------------------- */
+app.listen(PORT, async () => {
+  try {
+    await ensureSchema();
+    console.log(`Server running on port ${PORT}`);
+    console.log('Connected to Postgres and ensured schema');
+  } catch (e) {
+    console.error('DB init failed:', e);
+  }
 });
-
